@@ -1,0 +1,151 @@
+<?php
+/**
+ * Module to hold custom PeanutBase code.
+ */
+
+ 
+/**
+ * Implements hook_blast_linkout_info().
+ *
+ * Set custom BLAST linkouts here. These will be added to the default linkout
+ * types available on the "Blast Database" admin page.
+ *
+ */
+function peanut_custom_blast_linkout_info() {
+  $types = array();
+  
+  $types['peanutbase_gbrowse'] = array(
+    'name' => 'PeanutBase GBrowse',
+    'process function' => 'tripal_custom_generate_peanutbase_gbrowse_linkout',
+    'require_regex' => TRUE,
+  );
+  
+  return $types;
+}
+
+
+/**
+ * The function called when determining linkouts for blast databases 
+ * with a linkout type of 'PeanutBase GBrowse'.
+ */
+function tripal_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $info, $options = array()) {
+//echo "tripal_custom_generate_peanutbase_gbrowse_linkout()<br>URL prefix: $url_prefix, hit: $hit, info: <pre>";var_dump($info);echo ", options:<pre>";var_dump($options);echo "<pre>";
+  $url = false;
+  $blastdb_name = NULL;
+  $hit_name = $hit->{'Hit_def'};
+
+  if ($info['Target'] == 'All genomes') {
+    // default regex
+    $regex = "/^\w+\.(\S+).*/";
+    
+    if (preg_match('/^aradu/', $hit_name) == 1) {
+      $blastdb_name = 'PeanutBase_aradu_gbrowse';
+    }
+    else if (preg_match('/^araip/', $hit_name) == 1) {
+      $blastdb_name = 'PeanutBase_araip_gbrowse';
+    }
+    else if (preg_match('/^cajca/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_cajca_gbrowse';
+    }
+    else if (preg_match('/^cicar/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_cicar_gbrowse';
+    }
+    else if (preg_match('/^glyma/', $hit_name) == 1) {
+      $blastdb_name = 'SoyBase_glyma_gbrowse';
+    }
+    else if (preg_match('/^lotja/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_lotja_gbrowse';
+    }
+    else if (preg_match('/^medtr/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_medtr_gbrowse';
+    }
+    else if (preg_match('/^phavu/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_phavu_gbrowse';
+    }
+    else if (preg_match('/^vigra/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_vigra_gbrowse';
+    }
+    else {
+      // Don't know what to do with this hit
+      drupal_set_message("Don't know how to create GBrowse linkout for $hit_name", 'error');
+    }  
+
+    $hit_name = preg_replace($regex, '$1', $hit_name);
+    $hit->{'linkout_id'} = $hit_name;
+    if ($blastdb_info = tripal_custom_getBLASTdbinfo($blastdb_name)) {
+//echo "Call tripal_blast_generate_linkout_gbrowse() with URL prefix " . $blastdb_info['urlprefix'].", hit: $hit<br>"; 
+      $url = tripal_blast_generate_linkout_gbrowse($blastdb_info['urlprefix'], $hit, $info, $options);
+    }
+  }
+  else {
+    // default regex:
+    $regex = "/^\w+\.(\S+)/";
+    
+    if (preg_match('/^aradu/', $hit_name) == 1) {
+      $blastdb_name = 'PeanutBase_aradu_gene';
+    }
+    else if (preg_match('/^araip/', $hit_name) == 1) {
+      $blastdb_name = 'PeanutBase_araip_gene';
+    }
+    else if (preg_match('/^cajca/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_cajca_gene';
+    }
+    else if (preg_match('/^cicar/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_cicar_gene';
+    }
+    else if (preg_match('/^glyma/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_glyma_gene';
+      if (preg_match("/^\w+\.(\S+)\.p/", $hit_name)) {
+        //glyma protein
+        $regex = "/^\w+\.(\S+)\.p/";
+      }
+    }
+    else if (preg_match('/^lotja/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_lotja_gene';
+    }
+    else if (preg_match('/^medtr/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_medtr_gene';
+    }
+    else if (preg_match('/^phavu/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_phavu_gene';
+    }
+    else if (preg_match('/^vigra/', $hit_name) == 1) {
+      $blastdb_name = 'LegumeInfo_vigra_gene';
+    }
+    else {
+      // Don't know what to do with this hit
+      drupal_set_message("Don't know how to create linkout for $hit_name", 'error');
+    }  
+
+    $hit_name = preg_match($regex, $hit_name, $matches);
+    if (isset($matches[1])) {
+      $hit->{'linkout_id'} = $matches[1];
+    }
+    if ($blastdb_name AND $blastdb_info = tripal_custom_getBLASTdbinfo($blastdb_name)) {
+      $url = tripal_blast_generate_linkout_link($blastdb_info['urlprefix'], $hit, $info, $options);
+    }
+  }
+
+  return $url;
+}//tripal_custom_generate_peanutbase_gbrowse_linkout
+
+
+
+/**
+ * Retrieves the url prefix for a blast database based on it's name.
+ */
+function tripal_custom_getBLASTdbinfo($blastdb_name) {
+
+  $sql = "
+    SELECT urlprefix 
+    FROM {db} WHERE name='$blastdb_name'";
+  if ($res = chado_query($sql)) {
+    if ($row=$res->fetchObject()) {
+      return array(
+        'urlprefix' => $row->urlprefix, 
+      );
+    }
+  }
+  
+  return false;
+}
