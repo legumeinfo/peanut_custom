@@ -16,7 +16,7 @@ function peanut_custom_blast_linkout_info() {
   
   $types['peanutbase_gbrowse'] = array(
     'name' => 'PeanutBase GBrowse',
-    'process function' => 'tripal_custom_generate_peanutbase_gbrowse_linkout',
+    'process function' => 'peanut_custom_generate_peanutbase_gbrowse_linkout',
     'require_regex' => TRUE,
   );
   
@@ -28,8 +28,7 @@ function peanut_custom_blast_linkout_info() {
  * The function called when determining linkouts for blast databases 
  * with a linkout type of 'PeanutBase GBrowse'.
  */
-function tripal_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $info, $options = array()) {
-//echo "tripal_custom_generate_peanutbase_gbrowse_linkout()<br>URL prefix: $url_prefix, hit: $hit, info: <pre>";var_dump($info);echo ", options:<pre>";var_dump($options);echo "<pre>";
+function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $info, $options = array()) {
   $url = false;
   $blastdb_name = NULL;
   $hit_name = $hit->{'Hit_def'};
@@ -72,7 +71,7 @@ function tripal_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $i
 
     $hit_name = preg_replace($regex, '$1', $hit_name);
     $hit->{'linkout_id'} = $hit_name;
-    if ($blastdb_info = tripal_custom_getBLASTdbinfo($blastdb_name)) {
+    if ($blastdb_info = peanut_custom_getBLASTdbinfo($blastdb_name)) {
 //echo "Call tripal_blast_generate_linkout_gbrowse() with URL prefix " . $blastdb_info['urlprefix'].", hit: $hit<br>"; 
       $url = tripal_blast_generate_linkout_gbrowse($blastdb_info['urlprefix'], $hit, $info, $options);
     }
@@ -121,20 +120,38 @@ function tripal_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $i
     if (isset($matches[1])) {
       $hit->{'linkout_id'} = $matches[1];
     }
-    if ($blastdb_name AND $blastdb_info = tripal_custom_getBLASTdbinfo($blastdb_name)) {
+    if ($blastdb_name AND $blastdb_info = peanut_custom_getBLASTdbinfo($blastdb_name)) {
       $url = tripal_blast_generate_linkout_link($blastdb_info['urlprefix'], $hit, $info, $options);
     }
   }
 
   return $url;
-}//tripal_custom_generate_peanutbase_gbrowse_linkout
+}//peanut_custom_generate_peanutbase_gbrowse_linkout
+
+
+
+/**
+  * peanut_custom_views_pre_view()
+  *
+  * override hook_views_pre_view with PeanutBase-specific customizations.
+  */
+function peanut_custom_views_pre_view(&$view, &$display_id, &$args) {
+//drupal_set_message("view: " . print_r(array_keys((array)$view), true));
+//("view name: " . print_r($view->name, true));
+
+  // Customize view for tripal_gene module
+  if (strstr($view->name, 'gene')) {
+    // Give a peanut gene model in example
+    $view->display['default']->handler->options['filters']['name']['expose']['description'] = "e.g. [Contains]: Aradu.00EZV";
+  }//tripal_gene
+}
 
 
 
 /**
  * Retrieves the url prefix for a blast database based on it's name.
  */
-function tripal_custom_getBLASTdbinfo($blastdb_name) {
+function peanut_custom_getBLASTdbinfo($blastdb_name) {
 
   $sql = "
     SELECT urlprefix 
