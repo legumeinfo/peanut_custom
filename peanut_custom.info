@@ -3,3 +3,4 @@ description = Provide custom functionality specific to PeanutBase.
 package = PeanutBase Extensions
 core = 7.x
 dependencies[] = blast_ui
+dependencies[] = tripal_gene
