@@ -21,7 +21,7 @@ function peanut_custom_blast_linkout_info() {
   );
   
   return $types;
-}
+}//peanut_custom_blast_linkout_info
 
 
 /**
@@ -33,7 +33,7 @@ function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $i
   $blastdb_name = NULL;
   $hit_name = $hit->{'Hit_def'};
 
-  if ($info['Target'] == 'All genomes') {
+  if ($info['Target'] == 'All genomes' || stristr($info['Target'], 'genome')) {
     // default regex
     $regex = "/^\w+\.(\S+).*/";
     
@@ -42,27 +42,6 @@ function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $i
     }
     else if (preg_match('/^araip/', $hit_name) == 1) {
       $blastdb_name = 'PeanutBase_araip_gbrowse';
-    }
-    else if (preg_match('/^cajca/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_cajca_gbrowse';
-    }
-    else if (preg_match('/^cicar/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_cicar_gbrowse';
-    }
-    else if (preg_match('/^glyma/', $hit_name) == 1) {
-      $blastdb_name = 'SoyBase_glyma_gbrowse';
-    }
-    else if (preg_match('/^lotja/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_lotja_gbrowse';
-    }
-    else if (preg_match('/^medtr/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_medtr_gbrowse';
-    }
-    else if (preg_match('/^phavu/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_phavu_gbrowse';
-    }
-    else if (preg_match('/^vigra/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_vigra_gbrowse';
     }
     else {
       // Don't know what to do with this hit
@@ -73,7 +52,7 @@ function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $i
     $hit->{'linkout_id'} = $hit_name;
     if ($blastdb_info = peanut_custom_getBLASTdbinfo($blastdb_name)) {
 //echo "Call tripal_blast_generate_linkout_gbrowse() with URL prefix " . $blastdb_info['urlprefix'].", hit: $hit<br>"; 
-      $url = tripal_blast_generate_linkout_gbrowse($blastdb_info['urlprefix'], $hit, $info, $options);
+      $url = peanut_custom_generate_linkout_gbrowse($blastdb_info['urlprefix'], $hit, $info, $options);
     }
   }
   else {
@@ -86,31 +65,6 @@ function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $i
     else if (preg_match('/^araip/', $hit_name) == 1) {
       $blastdb_name = 'PeanutBase_araip_gene';
     }
-    else if (preg_match('/^cajca/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_cajca_gene';
-    }
-    else if (preg_match('/^cicar/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_cicar_gene';
-    }
-    else if (preg_match('/^glyma/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_glyma_gene';
-      if (preg_match("/^\w+\.(\S+)\.p/", $hit_name)) {
-        //glyma protein
-        $regex = "/^\w+\.(\S+)\.p/";
-      }
-    }
-    else if (preg_match('/^lotja/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_lotja_gene';
-    }
-    else if (preg_match('/^medtr/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_medtr_gene';
-    }
-    else if (preg_match('/^phavu/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_phavu_gene';
-    }
-    else if (preg_match('/^vigra/', $hit_name) == 1) {
-      $blastdb_name = 'LegumeInfo_vigra_gene';
-    }
     else {
       // Don't know what to do with this hit
       drupal_set_message("Don't know how to create linkout for $hit_name", 'error');
@@ -121,7 +75,7 @@ function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $i
       $hit->{'linkout_id'} = $matches[1];
     }
     if ($blastdb_name AND $blastdb_info = peanut_custom_getBLASTdbinfo($blastdb_name)) {
-      $url = tripal_blast_generate_linkout_link($blastdb_info['urlprefix'], $hit, $info, $options);
+      $url = peanut_custom_generate_linkout_gene_gbrowse($blastdb_info['urlprefix'], $hit, $info, $options);
     }
   }
 
@@ -144,7 +98,7 @@ function peanut_custom_views_pre_view(&$view, &$display_id, &$args) {
     // Give a peanut gene model in example
     $view->display['default']->handler->options['filters']['name']['expose']['description'] = "e.g. [Contains]: Aradu.00EZV";
   }//tripal_gene
-}
+}//peanut_custom_views_pre_view
 
 
 
@@ -165,4 +119,88 @@ function peanut_custom_getBLASTdbinfo($blastdb_name) {
   }
   
   return false;
-}
+}//peanut_custom_getBLASTdbinfo
+
+
+function peanut_custom_generate_linkout_gbrowse($url_prefix, $hit, $info) {
+  $range_info = peanut_getHSPranges($info['HSPs'], 0);
+  $ranges = $range_info['ranges'];
+  $coords = $range_info['coords'];
+//drupal_set_message("ranges: <pre>" . print_r($ranges, true) . "</pre>coords: <pre>" . print_r($coords, true) . "</pre>");
+  
+  // Calculate the minimum & maximum coordinates.
+  $min = min($coords);
+  $max = max($coords);
+
+  // Build the link brute force until/unless someone figures out how to prevent
+  //   l() from URL-encoding the sub-parameters to "query=".
+  $query = "q=".$hit->{'linkout_id'}.":$min..$max";
+  $query .= ";add=".$hit->{'linkout_id'}."+BLAST+BlastHit=" . join ("," , $ranges);
+  $query .= ";h_feat=BlastHit";
+  $url = "<a href=\"$url_prefix$query\">" . $hit->{'linkout_id'} . "</a>";
+//drupal_set_message("URL: $url");
+  
+  return $url;
+}//peanut_custom_generate_linkout_gbrowse
+
+
+function peanut_custom_generate_linkout_gene_gbrowse($url_prefix, $hit, $info) {
+  // Hit positions will be relative to the gene model, so adjust to genome position
+  $position = peanut_getGenePosition($hit->{'linkout_id'});
+  
+  $range_info = peanut_getHSPranges($info['HSPs'], $position['start']);
+  $ranges = $range_info['ranges'];
+  $coords = $range_info['coords'];
+  
+  // Build the link brute force until/unless someone figures out how to prevent
+  //   l() from URL-encoding the sub-parameters to "query=".
+  $query = $hit->{'linkout_id'};
+  $query .= ";add=".$position['chr']."+BLAST+BlastHit=" . join ("," , $ranges);
+  $query .= ";h_feat=BlastHit";
+  $url = "<a href=\"$url_prefix$query\">" . $hit->{'linkout_id'} . "</a>";
+//drupal_set_message("URL: $url");
+  
+  return $url;
+}//peanut_custom_generate_linkout_gene_gbrowse
+
+
+function peanut_getHSPranges($hsps, $offset) {
+  // First we need to collect the HSPs to define the ranges we want to
+  // display on the GBrowse.
+  $ranges = array();
+  // We also keep track of all the coordinates in order to later
+  // calculate the smallest and largest coordinate.
+  $coords = array();
+  foreach($hsps as $hsp) {
+  
+    $start = $offset + min($hsp['Hsp_hit-from'], $hsp['Hsp_hit-to']);
+    $stop  = $offset + max($hsp['Hsp_hit-from'], $hsp['Hsp_hit-to']);
+    
+    // Format the hsp for inclusion in the new track later.
+    array_push($ranges, "$start..$stop");
+    
+    // Add both the start & stop to the coordinate list.
+    array_push($coords, $start, $stop);
+  }
+  
+  return array('ranges' => $ranges, 'coords' => $coords);
+}//peanut_getHSPranges
+
+
+function peanut_getGenePosition($hit_name) {
+  // Get starting position for gene model
+  $sql = "
+    SELECT fl.fmin, s.uniquename AS chr FROM {featureloc} fl
+      INNER JOIN {feature} f ON f.feature_id=fl.feature_id
+      INNER JOIN {feature} s ON s.feature_id=fl.srcfeature_id
+    WHERE f.uniquename='$hit_name'";
+  $results = chado_query($sql);
+  foreach ($results as $r) {
+//drupal_set_message("$hit_name begins at " . $r->fmin);
+    return array('start' => $r->fmin, 'chr' => $r->chr);
+  }
+
+  // If we get here, the query failed
+  return 0;
+}//peanut_getGenePosition
+
