@@ -124,7 +124,7 @@ function peanut_custom_views_pre_view(&$view, &$display_id, &$args) {
   // Customize view for tripal_gene module
   if (strstr($view->name, 'gene')) {
     // Give a peanut gene model in example
-    $view->display['default']->handler->options['filters']['name']['expose']['description'] = "e.g. [Contains]: Aradu.00EZV";
+    $view->display['default']->handler->options['filters']['name']['expose']['description'] = "(e.g. [Contains]: Aradu.010B0)";
   }//tripal_gene
 }//peanut_custom_views_pre_view
 
