@@ -3,7 +3,27 @@
  * Module to hold custom PeanutBase code.
  */
 
- 
+require_once ('includes/peanut_downloads.inc');
+
+/**
+ * Implements hook_menu().
+ * URLs specific to PeanutBase
+ */
+function peanut_custom_menu() {
+  $items = array();
+
+  $items['search/marker/csv'] = array(
+    'title' => 'Download Markers: CSV',
+    'page callback' => 'trpdownload_download_page',
+    'page arguments' => array('marker_csv', 3),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+
 /**
  * Implements hook_blast_linkout_info().
  *
@@ -28,20 +48,20 @@ function peanut_custom_blast_linkout_info() {
  * The function called when determining linkouts for blast databases 
  * with a linkout type of 'PeanutBase GBrowse'.
  */
-function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $info, $options = array()) {
+function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $regex, $hit, $info, $options = array()) {
   $url = false;
   $blastdb_name = NULL;
-  $hit_name = $hit->{'Hit_def'};
+  $hit_name = (preg_match('/BL_ORD_ID/', $hit->{'Hit_id'})) ? $hit->{'Hit_def'} : $hit->{'Hit_id'};
 
-  if ($info['Target'] == 'All genomes' || stristr($info['Target'], 'genome')) {
-    // default regex
-    $regex = "/^\w+\.(\S+).*/";
-    
+  if (stristr($info['Target'], 'genome')) {
     if (preg_match('/^aradu/', $hit_name) == 1) {
       $blastdb_name = 'PeanutBase_aradu_gbrowse';
     }
     else if (preg_match('/^araip/', $hit_name) == 1) {
       $blastdb_name = 'PeanutBase_araip_gbrowse';
+    }
+    else if (preg_match('/^arahy/', $hit_name) == 1) {
+      $blastdb_name = 'PeanutBase_arahy_gbrowse';
     }
     else {
       // Don't know what to do with this hit
@@ -51,31 +71,39 @@ function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $i
     $hit_name = preg_replace($regex, '$1', $hit_name);
     $hit->{'linkout_id'} = $hit_name;
     if ($blastdb_info = peanut_custom_getBLASTdbinfo($blastdb_name)) {
-//echo "Call tripal_blast_generate_linkout_gbrowse() with URL prefix " . $blastdb_info['urlprefix'].", hit: $hit<br>"; 
       $url = peanut_custom_generate_linkout_gbrowse($blastdb_info['urlprefix'], $hit, $info, $options);
     }
-  }
-  else {
-    // default regex:
-    $regex = "/^\w+\.(\S+)/";
-    
+    else {
+      drupal_set_message("Unable to find BLAST db information for '$blastdb_name");
+    }
+  }//target was a genome
+  
+  else {    
     if (preg_match('/^aradu/', $hit_name) == 1) {
       $blastdb_name = 'PeanutBase_aradu_gene';
     }
     else if (preg_match('/^araip/', $hit_name) == 1) {
       $blastdb_name = 'PeanutBase_araip_gene';
     }
+    else if (preg_match('/^arahy/', $hit_name) == 1) {
+      $blastdb_name = 'PeanutBase_arahy_Tifrunner_gene';
+    }
     else {
       // Don't know what to do with this hit
-      drupal_set_message("Don't know how to create linkout for $hit_name", 'error');
-    }  
-
-    $hit_name = preg_match($regex, $hit_name, $matches);
-    if (isset($matches[1])) {
-      $hit->{'linkout_id'} = $matches[1];
+      drupal_set_message("Don't know how to create linkout for '$hit_name'", 'error');
     }
-    if ($blastdb_name AND $blastdb_info = peanut_custom_getBLASTdbinfo($blastdb_name)) {
-      $url = peanut_custom_generate_linkout_gene_gbrowse($blastdb_info['urlprefix'], $hit, $info, $options);
+
+    if ($regex) {
+      $hit_name = preg_match($regex, $hit_name, $matches);
+      if (isset($matches[1])) {
+        $hit->{'linkout_id'} = $matches[1];
+      }
+      if ($blastdb_name AND $blastdb_info = peanut_custom_getBLASTdbinfo($blastdb_name)) {
+        $url = peanut_custom_generate_linkout_gene_gbrowse($blastdb_info['urlprefix'], $hit, $info, $options);
+      }
+      else {
+        drupal_set_message("Unable to find BLAST db information for '$blastdb_name");
+      }
     }
   }
 
@@ -203,4 +231,5 @@ function peanut_getGenePosition($hit_name) {
   // If we get here, the query failed
   return 0;
 }//peanut_getGenePosition
+
 
