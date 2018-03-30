@@ -51,7 +51,7 @@ function peanut_custom_blast_linkout_info() {
 function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $regex, $hit, $info, $options = array()) {
   $url = false;
   $blastdb_name = NULL;
-  $hit_name = (preg_match('/BL_ORD_ID/', $hit->{'Hit_id'})) ? $hit->{'Hit_def'} : $hit->{'Hit_id'};
+  $hit_name = $hit->{'hit_name'};
 
   if (stristr($info['Target'], 'genome')) {
     if (preg_match('/^aradu/', $hit_name) == 1) {
