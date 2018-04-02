@@ -48,10 +48,11 @@ function peanut_custom_blast_linkout_info() {
  * The function called when determining linkouts for blast databases 
  * with a linkout type of 'PeanutBase GBrowse'.
  */
-function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $regex, $hit, $info, $options = array()) {
-  $url = false;
+function peanut_custom_generate_peanutbase_gbrowse_linkout($url_prefix, $hit, $info, $options = array()) {
+  $url          = false;
   $blastdb_name = NULL;
-  $hit_name = $hit->{'hit_name'};
+  $hit_name     = $hit->{'hit_name'};
+  $regex        = $info['RegEx'];
 
   if (stristr($info['Target'], 'genome')) {
     if (preg_match('/^aradu/', $hit_name) == 1) {
